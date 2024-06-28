@@ -1,0 +1,368 @@
+// Experimental Code for Line Maze Solver Bot (Using 5 IR Sensors)
+
+#include <AFMotor.h>
+// Define IR Sensor pins as per connections
+#define FL A0
+#define NL A1
+#define C A2
+#define NR A3
+#define FR A4
+// Define motors as per connections
+#define MFL 1
+#define MRL 2
+#define MFR 3
+#define MRR 4
+
+// Initialising the motors
+AF_DCMotor frontLeft(MFL,MOTOR12_1KHZ);
+AF_DCMotor rearLeft(MRL,MOTOR12_1KHZ);
+AF_DCMotor frontRight(MFR,MOTOR12_1KHZ);
+AF_DCMotor rearRight(MRR,MOTOR12_1KHZ);
+
+// String path; // To store the path taken
+int fl,nl,c,nr,fr; // Sensor variables
+int check_delay=200; // Delay for proper detection of black line by the far left and far right sensors
+int end_check_delay=100;
+int pathAhead_check_delay=50;
+int con_check_delay=20;
+int turn_delay=500;
+int spd = 80;
+int t_spd=100;
+
+void setup() {
+  Serial.begin(9600); // Initialize serial communication
+  pinMode(FL,INPUT);
+  pinMode(NL,INPUT);
+  pinMode(C,INPUT);
+  pinMode(NR,INPUT);
+  pinMode(FR,INPUT);
+}
+
+void loop() {
+  readSensors();
+  if(!fl && !fr) {
+    if(c) {
+      goStraight();
+    }
+    else if(nl) {
+    frontLeft.setSpeed(0);   // Stop
+    frontLeft.run(RELEASE);
+    rearLeft.setSpeed(0);    // Stop
+    rearLeft.run(RELEASE);
+    frontRight.setSpeed(120); // Maximum speed
+    frontRight.run(FORWARD);
+    rearRight.setSpeed(120);  // Maximum speed
+    rearRight.run(FORWARD);
+      // adjustLeft();
+    }
+    else if(nr) {
+      // adjustRight();
+    frontLeft.setSpeed(120); // Maximum speed
+    frontLeft.run(FORWARD);
+    rearLeft.setSpeed(120);  // Maximum speed
+    rearLeft.run(FORWARD);
+    frontRight.setSpeed(0);   // Stop
+    frontRight.run(RELEASE);
+    rearRight.setSpeed(0);    // Stop
+    rearRight.run(RELEASE);
+    }
+    else if(!nr && !nl && !c) {
+      turnAround();
+      // path+='U';
+    }
+  }
+  else {
+    applyBrakes();
+    if(fl && fr) {
+      if(isEnd()) {
+        delay(10000); // Wait for 1 min before starting next trial
+        // solveMaze(); // Solve the maze with an optimal path 
+      }
+      else {
+        turnLeft();
+        // path+='L';
+      }
+    }
+    else if(fl) {
+      turnLeft();
+    //   // if(isPathAhead()) {
+    //     turnLeft();
+    //     // path+='L';
+    //   }
+    //   else {
+    //     turnLeft();
+    //     // path+='L';
+    //   }
+    }
+    
+    else {
+      if(isPathAhead()) {
+        goStraight();
+        // path+='S';
+      }
+    else {
+        turnRight();
+        // path+='R';
+      }
+    }
+  }
+  // optimizePath();
+}
+
+void readSensors() {
+  fl=digitalRead(FL);
+  nl=digitalRead(NL);
+  c=digitalRead(C);
+  nr=digitalRead(NR);
+  fr=digitalRead(FR);
+}
+
+// All the functions below need to be implemented on the basis of hardware used and its design
+
+void turnAround() {
+  // Add code for making a proper U turn
+  while(!c) {
+    frontLeft.setSpeed(t_spd-20);
+    frontLeft.run(BACKWARD);
+    rearLeft.setSpeed(t_spd-20);
+    rearLeft.run(BACKWARD);
+    frontRight.setSpeed(t_spd-20);
+    frontRight.run(FORWARD);
+    rearRight.setSpeed(t_spd-20);
+    rearRight.run(FORWARD);
+    delay(con_check_delay);
+    readSensors();
+  }
+}
+bool isPathAhead() {
+  // Add code for checking presence of path 1 inch ahead
+    frontLeft.setSpeed(spd/2);
+    frontLeft.run(FORWARD);
+    rearLeft.setSpeed(spd/2);
+    rearLeft.run(FORWARD);
+    frontRight.setSpeed(spd/2);
+    frontRight.run(FORWARD);
+    rearRight.setSpeed(spd/2);
+    rearRight.run(FORWARD);
+    delay(pathAhead_check_delay);
+    applyBrakes();
+    readSensors();
+    if(nl || c || nr) {
+      return true;
+    }
+    return false;
+}
+
+void applyBrakes() {
+  // Add code for stopping
+    frontLeft.setSpeed(0);
+    frontLeft.run(RELEASE);
+    rearLeft.setSpeed(0);
+    rearLeft.run(RELEASE);
+    frontRight.setSpeed(0);
+    frontRight.run(RELEASE);
+    rearRight.setSpeed(0);
+    rearRight.run(RELEASE);
+}
+
+void adjustRight() {
+  // Add code for following line when the line is detected a little to the left
+   
+
+
+
+       frontLeft.setSpeed(t_spd);
+    frontLeft.run(FORWARD);
+    rearLeft.setSpeed(t_spd);
+    rearLeft.run(FORWARD);
+    frontRight.setSpeed(0);
+    frontRight.run(RELEASE);
+    rearRight.setSpeed(0);
+    rearRight.run(RELEASE);
+    delay(turn_delay-200);
+    applyBrakes();
+    readSensors();
+    while(!c) {
+    frontLeft.setSpeed(t_spd);
+    frontLeft.run(FORWARD);
+    rearLeft.setSpeed(t_spd);
+    rearLeft.run(FORWARD);
+    frontRight.setSpeed(t_spd);
+    frontRight.run(BACKWARD);
+    rearRight.setSpeed(t_spd);
+    rearRight.run(BACKWARD);
+    delay(con_check_delay);
+    applyBrakes();
+    readSensors();
+  }
+    
+}
+
+void adjustLeft() {
+  // Add code for following line when the line is detected a little to the right
+    frontLeft.setSpeed(0);
+    frontLeft.run(RELEASE);
+    rearLeft.setSpeed(0);
+    rearLeft.run(RELEASE);
+    frontRight.setSpeed(t_spd);
+    frontRight.run(FORWARD);
+    rearRight.setSpeed(t_spd);
+    rearRight.run(FORWARD);
+    delay(turn_delay-200);
+    applyBrakes();
+    readSensors();
+    while(!c) {
+    frontLeft.setSpeed(t_spd);
+    frontLeft.run(BACKWARD);
+    rearLeft.setSpeed(t_spd);
+    rearLeft.run(BACKWARD);
+    frontRight.setSpeed(t_spd);
+    frontRight.run(FORWARD);
+    rearRight.setSpeed(t_spd);
+    rearRight.run(FORWARD);
+    delay(con_check_delay);
+    applyBrakes();
+    readSensors();
+  }
+}
+
+void turnLeft() {
+  // Add code for making a proper left turn
+    frontLeft.setSpeed(t_spd);
+    frontLeft.run(BACKWARD);
+    rearLeft.setSpeed(t_spd);
+    rearLeft.run(BACKWARD);
+    frontRight.setSpeed(t_spd);
+    frontRight.run(FORWARD);
+    rearRight.setSpeed(t_spd);
+    rearRight.run(FORWARD);
+    delay(turn_delay);
+    applyBrakes();
+    readSensors();
+    while(!c) {
+    frontLeft.setSpeed(t_spd);
+    frontLeft.run(BACKWARD);
+    rearLeft.setSpeed(t_spd);
+    rearLeft.run(BACKWARD);
+    frontRight.setSpeed(t_spd);
+    frontRight.run(FORWARD);
+    rearRight.setSpeed(t_spd);
+    rearRight.run(FORWARD);
+    delay(con_check_delay);
+    applyBrakes();
+    readSensors();
+  }
+}
+
+void goStraight() {
+  // Add code for moving ahead
+    frontLeft.setSpeed(spd);
+    frontLeft.run(FORWARD);
+    rearLeft.setSpeed(spd);
+    rearLeft.run(FORWARD);
+    frontRight.setSpeed(spd);
+    frontRight.run(FORWARD);
+    rearRight.setSpeed(spd);
+    rearRight.run(FORWARD);
+}
+
+void turnRight() {
+  // Add code for making a proper right turn
+    frontLeft.setSpeed(t_spd);
+    frontLeft.run(FORWARD);
+    rearLeft.setSpeed(t_spd);
+    rearLeft.run(FORWARD);
+    frontRight.setSpeed(t_spd);
+    frontRight.run(BACKWARD);
+    rearRight.setSpeed(t_spd);
+    rearRight.run(BACKWARD);
+    delay(turn_delay-10);
+    applyBrakes();
+    readSensors();
+    while(!c) {
+    frontLeft.setSpeed(t_spd);
+    frontLeft.run(FORWARD);
+    rearLeft.setSpeed(t_spd);
+    rearLeft.run(FORWARD);
+    frontRight.setSpeed(t_spd);
+    frontRight.run(BACKWARD);
+    rearRight.setSpeed(t_spd);
+    rearRight.run(BACKWARD);
+    delay(con_check_delay);
+    applyBrakes();
+    readSensors();
+  }
+}
+
+bool isEnd() {
+  // Add code for checking end of maze 1 inch ahead
+    frontLeft.setSpeed(spd/2);
+    frontLeft.run(FORWARD);
+    rearLeft.setSpeed(spd/2);
+    rearLeft.run(FORWARD);
+    frontRight.setSpeed(spd/2);
+    frontRight.run(FORWARD);
+    rearRight.setSpeed(spd/2);
+    rearRight.run(FORWARD);
+    delay(end_check_delay);
+    applyBrakes();
+    readSensors();
+    if(fl && nl && c && nr && fr) {
+      return true;
+    }
+    return false;
+}
+
+
+void optimizePath() {
+  // Add code for implementing the replacement rules on the path variable for finding the shortest path
+  char memory[100];
+  path.toCharArray(memory, path.length() + 1);
+  if(memory[--count]=='U' && memory[count]=='L'){
+    if(memory[count-2]=='S'){
+      memory[count-2]=='R';
+      path.remove(count-1);
+      Serial.println(path);
+    }
+    if(memory[count-2]=='L'){
+      memory[count-2]=='S';
+      path.remove(count-1);
+      Serial.println(path);
+    }
+    
+  }
+}
+
+void solveMaze() {
+  // Add code for solving the maze optimally in the 2nd trial while using the stored optimal path
+for (int i = 0; i < path.length(); i++) {
+    char command = path.charAt(i);
+    
+    // Execute the corresponding command
+    executeCommand(command);
+  }  
+}  
+
+
+void executeCommand(char command) {
+  switch (command) {
+    case 'S': // Move forward
+      goStraight();
+      break;
+      
+    case 'R': // Turn right
+      turnRight();
+      break;
+      
+    case 'L': // Turn left
+      turnLeft();
+      break;
+      
+    case 'U': // Move backward
+      turnAround();
+      break;
+  }
+  delay(1000); // Adjust this delay for the desired execution time of each command
+}
+
+
